@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable, MSVC)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Setup MSVC environment (x64)
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vcvars = & $vswhere -latest -requires Microsoft.Component.MSBuild -find VC\Auxiliary\Build\vcvarsall.bat
+          & $vcvars x64
+          Get-ChildItem Env: | Where-Object { $_.Name -match '^(INCLUDE|LIB|LIBPATH|PATH|CL)$' } | ForEach-Object {
+            "$($_.Name)=$($_.Value)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-msvc-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build Rust (release, MSVC)
+        run: cargo build --release
+
+      - name: Build hook DLL (C/C++, MSVC cl.exe /LD)
+        shell: pwsh
+        run: |
+          cd hook_dll
+          .\build.bat
+
+      - name: Run smoke test (PowerShell)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Continue"
+          & ./tests/smoke_test.ps1
+          if ($LASTEXITCODE -ne 0) { Write-Warning "Smoke test reported issues" }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-smooth-msvc
+          path: |
+            target/release/win-smooth.exe
+            hook_dll/x64/Release/explorer_inject.dll
+          retention-days: 30
