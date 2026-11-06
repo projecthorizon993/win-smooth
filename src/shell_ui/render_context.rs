@@ -28,7 +28,7 @@ pub struct BrushCache {
 impl BrushCache {
     pub fn get(
         &mut self,
-        target: &ID2D1RenderTarget,
+        target: &ID2D1HwndRenderTarget,
         color: Color,
     ) -> Result<ID2D1SolidColorBrush> {
         if let Some(b) = self.brushes.get(&color) {
@@ -41,7 +41,7 @@ impl BrushCache {
 }
 
 fn create_solid_brush(
-    target: &ID2D1RenderTarget,
+    target: &ID2D1HwndRenderTarget,
     color: Color,
 ) -> Result<ID2D1SolidColorBrush> {
     unsafe {
@@ -59,7 +59,7 @@ fn create_solid_brush(
 /// Direct2D drawing context for one frame.
 pub struct DrawContext {
     pub factory: ID2D1Factory,
-    pub target: ID2D1RenderTarget,
+    pub target: ID2D1HwndRenderTarget,
     pub brushes: BrushCache,
 }
 

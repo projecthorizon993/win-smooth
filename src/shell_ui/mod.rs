@@ -10,9 +10,9 @@ pub mod window;
 pub mod render_context;
 
 pub mod taskbar;
-pub mod launcher;
 pub mod control_center;
 pub mod notifications;
 pub mod animation;
+pub mod launcher;
 
 pub mod components;
