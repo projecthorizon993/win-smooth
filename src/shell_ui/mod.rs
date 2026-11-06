@@ -5,10 +5,9 @@ pub mod design_tokens;
 pub mod theme;
 pub mod hyper_os_theme;
 
-pub mod render;
-pub mod window;
 pub mod render_context;
 
+pub mod spring;
 pub mod taskbar;
 pub mod control_center;
 pub mod notifications;

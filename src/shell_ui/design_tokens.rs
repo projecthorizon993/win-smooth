@@ -1,6 +1,8 @@
 //! Hyper OS-inspired design system tokens for win-smooth shell.
 //! Corner radius 28dp, glassmorphism, vibrant accents, card-based layout.
 
+use std::hash::{Hash, Hasher};
+
 use windows::Win32::Foundation::COLORREF;
 
 /// Corner radius in device-independent pixels (Hyper OS signature: 28dp)
@@ -44,7 +46,7 @@ pub const APP_CARD_ICON_SIZE: f32 = 44.0;
 // ---------------------------------------------------------------------------
 
 /// sRGB color with alpha
-#[derive(Debug, Clone, Copy, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Color {
     pub r: f32,
     pub g: f32,
@@ -52,10 +54,19 @@ pub struct Color {
     pub a: f32,
 }
 
-// `f32` does not implement `Eq` (NaN != NaN), so `Eq` is implemented
-// manually. Color values are never NaN in practice, so bit-wise equality is
-// sound for HashMap key use.
+// `f32` does not implement `Hash` or `Eq` (NaN != NaN), so both are implemented
+// manually. Color values are never NaN in practice, so bit-wise equality/hashing
+// is sound for HashMap key use (HashMap<Color, ID2D1SolidColorBrush>).
 impl Eq for Color {}
+
+impl Hash for Color {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.r.to_bits().hash(state);
+        self.g.to_bits().hash(state);
+        self.b.to_bits().hash(state);
+        self.a.to_bits().hash(state);
+    }
+}
 
 impl Color {
     pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
@@ -186,5 +197,10 @@ impl Theme {
     pub fn system_accent() -> Color {
         // Hyper OS borrows the user's Windows accent; default to vibrant blue-violet
         light::ACCENT
+    }
+
+    /// System theme preference (placeholder — defaults to light).
+    pub fn system() -> Self {
+        Self::light()
     }
 }

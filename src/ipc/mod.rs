@@ -39,11 +39,21 @@ pub const MSG_QUIT: u32 = 5;
 /// Fixed binary schema matching the C/C++ hook_dll AppMessage.
 /// 64 bytes total, naturally aligned, all Copy fields — safe to bit-copy.
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct AppMessage {
     pub msg_type: u32,
     pub win_id: u32,
     pub payload: [u8; 56],
+}
+
+impl Default for AppMessage {
+    fn default() -> Self {
+        Self {
+            msg_type: 0,
+            win_id: 0,
+            payload: [0u8; 56],
+        }
+    }
 }
 
 /// Receiver end of the IPC event channel.
@@ -111,7 +121,7 @@ fn pipe_loop(pipe_name: String, tx: mpsc::Sender<AppMessage>) {
             continue;
         }
 
-        let connected = unsafe { ConnectNamedPipe(pipe, std::ptr::null_mut()) }.as_bool();
+        let connected = unsafe { ConnectNamedPipe(pipe, std::ptr::null_mut()) } != 0;
 
         if !connected {
             let _ = unsafe { CloseHandle(pipe) };
@@ -132,7 +142,7 @@ fn pipe_loop(pipe_name: String, tx: mpsc::Sender<AppMessage>) {
                     std::ptr::null_mut(),
                 )
             }
-            .as_bool();
+            != 0;
 
             if !ok || read == 0 {
                 break; // client disconnected

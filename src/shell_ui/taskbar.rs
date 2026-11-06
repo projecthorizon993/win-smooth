@@ -331,8 +331,8 @@ pub fn layout(taskbar: &Taskbar) -> (Vec<AppSlot>, Vec<TrayItem>) {
 }
 
 /// Glass panel descriptor for the taskbar background.
-pub fn taskbar_panel_desc(taskbar: &Taskbar) -> crate::shell_ui::components::GlassPanelDesc {
-    crate::shell_ui::components::GlassPanelDesc {
+pub fn taskbar_panel_desc(taskbar: &Taskbar) -> crate::shell_ui::components::glass_panel::GlassPanelDesc {
+    crate::shell_ui::components::glass_panel::GlassPanelDesc {
         x: 0.0,
         y: taskbar.y(),
         width: taskbar.screen_width,
@@ -362,7 +362,7 @@ impl Taskbar {
     pub fn init_window(&mut self) -> windows::core::Result<HWND> {
         unsafe {
             let hinst = windows::Win32::System::LibraryLoader::GetModuleHandleW(None)?;
-            let class = windows::w!("WinSmoothTaskbar");
+            let class = w!("WinSmoothTaskbar");
 
             // Register once; re-registration of an existing class is a no-op
             // for our purposes (the class is process-global).
@@ -383,7 +383,7 @@ impl Taskbar {
                     | windows::Win32::UI::WindowsAndMessaging::WS_EX_LAYERED
                     | windows::Win32::UI::WindowsAndMessaging::WS_EX_TRANSPARENT,
                 class,
-                windows::w!("win-smooth taskbar"),
+                w!("win-smooth taskbar"),
                 WS_POPUP | WS_VISIBLE,
                 0,
                 y,
@@ -536,6 +536,6 @@ unsafe extern "system" fn taskbar_wndproc(
 ) -> LRESULT {
     match msg {
         windows::Win32::UI::WindowsAndMessaging::WM_DESTROY => LRESULT(0),
-        _ => windows::Win32::UI::WindowsAndMessaging::DefWindowProcW(hwnd, msg, wparam, lparam),
+        _ => unsafe { windows::Win32::UI::WindowsAndMessaging::DefWindowProcW(hwnd, msg, wparam, lparam) },
     }
 }

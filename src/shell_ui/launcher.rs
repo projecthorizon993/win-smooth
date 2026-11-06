@@ -175,7 +175,7 @@ impl Default for Launcher {
 fn default_entries() -> Result<Vec<AppEntry>> {
     // Small hardcoded starter set so the launcher shows cards immediately.
     // Real population (shell enum + SHGetFileInfo per entry) lives here.
-    let hinst = GetModuleHandleW(None)?;
+    let hinst = unsafe { GetModuleHandleW(None)? };
     let entries = vec![
         AppEntry {
             id: "explorer".into(),
@@ -455,6 +455,6 @@ pub unsafe extern "system" fn launcher_wndproc(
 ) -> LRESULT {
     match msg {
         windows::Win32::UI::WindowsAndMessaging::WM_DESTROY => LRESULT(0),
-        _ => windows::Win32::UI::WindowsAndMessaging::DefWindowProcW(hwnd, msg, wparam, lparam),
+        _ => unsafe { windows::Win32::UI::WindowsAndMessaging::DefWindowProcW(hwnd, msg, wparam, lparam) },
     }
 }

@@ -13,7 +13,7 @@ use windows::Win32::Graphics::Direct2D::Common::{
 };
 use windows::Win32::Graphics::Direct2D::{
     D2D1CreateFactory, D2D1_FACTORY_TYPE_SINGLE_THREADED, D2D1_HWND_RENDER_TARGET_PROPERTIES,
-    D2D1_PRESENT_OPTIONS_NONE, D2D1_RENDER_TARGET_PROPERTIES, ID2D1Factory, ID2D1RenderTarget,
+    D2D1_PRESENT_OPTIONS_NONE, D2D1_RENDER_TARGET_PROPERTIES, ID2D1Factory1, ID2D1RenderTarget1,
     ID2D1SolidColorBrush,
 };
 use windows::Win32::UI::HiDpi::GetDpiForWindow;
@@ -28,7 +28,7 @@ pub struct BrushCache {
 impl BrushCache {
     pub fn get(
         &mut self,
-        target: &ID2D1RenderTarget,
+        target: &ID2D1RenderTarget1,
         color: Color,
     ) -> Result<ID2D1SolidColorBrush> {
         if let Some(b) = self.brushes.get(&color) {
@@ -41,7 +41,7 @@ impl BrushCache {
 }
 
 fn create_solid_brush(
-    target: &ID2D1RenderTarget,
+    target: &ID2D1RenderTarget1,
     color: Color,
 ) -> Result<ID2D1SolidColorBrush> {
     unsafe {
@@ -58,15 +58,15 @@ fn create_solid_brush(
 
 /// Direct2D drawing context for one frame.
 pub struct DrawContext {
-    pub factory: ID2D1Factory,
-    pub target: ID2D1RenderTarget,
+    pub factory: ID2D1Factory1,
+    pub target: ID2D1RenderTarget1,
     pub brushes: BrushCache,
 }
 
 impl DrawContext {
     pub fn create_for_window(hwnd: HWND) -> Result<Self> {
         unsafe {
-            let factory = D2D1CreateFactory::<ID2D1Factory>(D2D1_FACTORY_TYPE_SINGLE_THREADED, None)?;
+            let factory = D2D1CreateFactory::<ID2D1Factory1>(D2D1_FACTORY_TYPE_SINGLE_THREADED, None)?;
 
             let mut rect = RECT::default();
             windows::Win32::Graphics::Gdi::GetClientRect(hwnd, &mut rect);
@@ -80,7 +80,7 @@ impl DrawContext {
                     pixelSize: D2D_SIZE_U { width, height },
                     presentOptions: D2D1_PRESENT_OPTIONS_NONE,
                 },
-            )?.cast::<ID2D1RenderTarget>()?;
+            )?.cast::<ID2D1RenderTarget1>()?;
 
             Ok(Self {
                 factory,
@@ -116,7 +116,7 @@ impl DrawContext {
         let brush = self.brushes.get(&self.target, color)?;
         unsafe {
             let rect = D2D1_ROUNDED_RECT {
-                rect: D2D_RECT_F {
+                rect: D2D1_RECT_F {
                     left: x,
                     top: y,
                     right: x + width,
@@ -144,7 +144,7 @@ impl DrawContext {
         let brush = self.brushes.get(&self.target, color)?;
         unsafe {
             let rect = D2D1_ROUNDED_RECT {
-                rect: D2D_RECT_F {
+                rect: D2D1_RECT_F {
                     left: x,
                     top: y,
                     right: x + width,
@@ -163,7 +163,7 @@ impl DrawContext {
         let brush = self.brushes.get(&self.target, color)?;
         unsafe {
             self.target.FillRectangle(
-                &D2D_RECT_F {
+                &D2D1_RECT_F {
                     left: rect.left as f32,
                     top: rect.top as f32,
                     right: rect.right as f32,
