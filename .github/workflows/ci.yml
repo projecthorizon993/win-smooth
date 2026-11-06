@@ -20,14 +20,9 @@ jobs:
           components: rustfmt, clippy
 
       - name: Setup MSVC environment (x64)
-        shell: pwsh
-        run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $vcvars = & $vswhere -latest -requires Microsoft.Component.MSBuild -find VC\Auxiliary\Build\vcvarsall.bat
-          & $vcvars x64
-          Get-ChildItem Env: | Where-Object { $_.Name -match '^(INCLUDE|LIB|LIBPATH|PATH|CL)$' } | ForEach-Object {
-            "$($_.Name)=$($_.Value)" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
+        uses: ilammy/msvc-dev-cmd@v2
+        with:
+          arch: x64
 
       - name: Cache Cargo
         uses: actions/cache@v4
