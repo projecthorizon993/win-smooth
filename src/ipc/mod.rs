@@ -74,7 +74,7 @@ pub fn start_pipe_server() -> anyhow::Result<PipeServer> {
     Ok(PipeServer { rx })
 }
 
-extern "system" {
+unsafe extern "system" {
     fn CreateNamedPipeW(
         lpname: windows_sys::core::PCWSTR,
         dwopenmode: u32,

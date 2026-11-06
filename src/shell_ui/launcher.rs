@@ -5,7 +5,7 @@ use crate::shell_ui::design_tokens::*;
 use crate::shell_ui::render_context::DrawContext;
 use crate::shell_ui::theme::ThemeManager;
 use windows::Win32::Foundation::{HWND, HINSTANCE, LPARAM, LRESULT, WPARAM};
-use windows::Win32::Graphics::Direct2D::Common::D2D1_RECT_F;
+use windows::Win32::Graphics::Direct2D::Common::D2D_RECT_F;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Shell::{
     SHGetFileInfoW, SHGFI_ICON, SHGFI_LARGEICON, SHFILEINFOW,
@@ -217,8 +217,8 @@ fn extract_icon(path: &str) -> Result<Option<HICON>> {
         let flags = SHGFI_ICON | SHGFI_LARGEICON;
         let result = SHGetFileInfoW(
             PCWSTR::from_raw(wide.as_ptr()),
-            0, // dwFileAttributes (ignored without SHGFI_USEFILEATTRIBUTES)
-            &mut info,
+            windows::Win32::Storage::FileSystem::FILE_FLAGS_AND_ATTRIBUTES(0),
+            Some(&mut info),
             std::mem::size_of::<SHFILEINFOW>() as u32,
             flags,
         );
@@ -248,7 +248,7 @@ impl Drop for Launcher {
 // ---------------------------------------------------------------------------
 
 /// Compute card rectangles for a grid given available width and card count.
-pub fn layout_cards(launcher: &Launcher, cols: usize) -> Vec<D2D1_RECT_F> {
+pub fn layout_cards(launcher: &Launcher, cols: usize) -> Vec<D2D_RECT_F> {
     let mut rects = Vec::with_capacity(launcher.entries.len());
     let gap = SPACE_XS;
     let top = 140.0; // below the search bar
@@ -263,7 +263,7 @@ pub fn layout_cards(launcher: &Launcher, cols: usize) -> Vec<D2D1_RECT_F> {
         let row = (i / cols) as f32;
         let x = x_start + col * (card_w + gap);
         let y = top + row * (card_h + gap);
-        rects.push(D2D1_RECT_F {
+        rects.push(D2D_RECT_F {
             left: x,
             top: y,
             right: x + card_w,
@@ -340,7 +340,7 @@ impl Launcher {
 /// Draw one app card: rounded card bg, vibrant icon background, icon, label.
 fn draw_app_card(
     dc: &DrawContext,
-    rect: D2D1_RECT_F,
+    rect: D2D_RECT_F,
     entry: &AppEntry,
     theme: Theme,
     hover: bool,
