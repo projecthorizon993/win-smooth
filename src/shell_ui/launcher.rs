@@ -4,15 +4,14 @@
 use crate::shell_ui::design_tokens::*;
 use crate::shell_ui::render_context::DrawContext;
 use crate::shell_ui::theme::ThemeManager;
-use windows::Win32::Foundation::{HWND, HINSTANCE, MAX_PATH};
+use windows::Win32::Foundation::{HWND, HINSTANCE};
 use windows::Win32::Graphics::Direct2D::Common::D2D1_RECT_F;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Shell::{
-    SHGetFileInfoW, SHGFI_ICON, SHGFI_LARGEICON, SHGFI_SMALLICON, SHGFI_USEFILEATTRIBUTES,
-    SHFILEINFOW,
+    SHGetFileInfoW, SHGFI_ICON, SHGFI_LARGEICON, SHFILEINFOW,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    DestroyIcon, ExtractIconExW, FILE_ATTRIBUTE_NORMAL, HICON,
+    DestroyIcon, HICON,
 };
 use windows::core::{PCWSTR, Result};
 
@@ -182,13 +181,13 @@ fn default_entries() -> Result<Vec<AppEntry>> {
             id: "explorer".into(),
             label: "File Explorer".into(),
             path: "C:\\Windows\\explorer.exe".into(),
-            icon: extract_icon("C:\\Windows\\explorer.exe", hinst)?,
+            icon: extract_icon("C:\\Windows\\explorer.exe")?,
         },
         AppEntry {
             id: "settings".into(),
             label: "Settings".into(),
             path: "C:\\Windows\\ImmersiveControlPanel\\SystemSettings.exe".into(),
-            icon: extract_icon("C:\\Windows\\ImmersiveControlPanel\\SystemSettings.exe", hinst)?,
+            icon: extract_icon("C:\\Windows\\ImmersiveControlPanel\\SystemSettings.exe")?,
         },
         AppEntry {
             id: "edge".into(),
@@ -196,49 +195,35 @@ fn default_entries() -> Result<Vec<AppEntry>> {
             path: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe".into(),
             icon: extract_icon(
                 "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-                hinst,
             )?,
         },
         AppEntry {
             id: "notepad".into(),
             label: "Notepad".into(),
             path: "C:\\Windows\\notepad.exe".into(),
-            icon: extract_icon("C:\\Windows\\notepad.exe", hinst)?,
+            icon: extract_icon("C:\\Windows\\notepad.exe")?,
         },
     ];
     Ok(entries)
 }
 
 /// Extract the app icon for `path` via SHGetFileInfo (large icon).
-/// Falls back to ExtractIconExW if SHGetFileInfo returns no handle.
-fn extract_icon(path: &str, hinst: HINSTANCE) -> Result<Option<HICON>> {
+/// Returns None when the file has no extractable icon, so callers fall back
+/// to a letter-glyph stand-in.
+fn extract_icon(path: &str) -> Result<Option<HICON>> {
     unsafe {
         let wide: Vec<u16> = path.encode_utf16().collect();
         let mut info: SHFILEINFOW = std::mem::zeroed();
-        let flags = SHGFI_ICON | SHGFI_LARGEICON | SHGFI_USEFILEATTRIBUTES;
+        let flags = SHGFI_ICON | SHGFI_LARGEICON;
         let result = SHGetFileInfoW(
             PCWSTR::from_raw(wide.as_ptr()),
-            FILE_ATTRIBUTE_NORMAL,
+            0, // dwFileAttributes (ignored without SHGFI_USEFILEATTRIBUTES)
             &mut info,
+            std::mem::size_of::<SHFILEINFOW>() as u32,
             flags,
         );
-        if result != 0 && !info.hIcon.is_invalid() && !info.hIcon.is_none() {
+        if result != 0 && info.hIcon != HICON::default() {
             return Ok(Some(info.hIcon));
-        }
-    }
-    // Fallback: ExtractIconExW (no file attributes flag needed for EXEs).
-    unsafe {
-        let wide: Vec<u16> = path.encode_utf16().collect();
-        let mut hicon: HICON = HICON::default();
-        let count = ExtractIconExW(
-            PCWSTR::from_raw(wide.as_ptr()),
-            0,
-            None,
-            Some(&mut hicon),
-            1,
-        );
-        if count > 0 && !hicon.is_invalid() && !hicon.is_none() {
-            return Ok(Some(hicon));
         }
     }
     Ok(None)
@@ -249,7 +234,9 @@ impl Drop for Launcher {
         unsafe {
             for entry in &self.entries {
                 if let Some(icon) = entry.icon {
-                    let _ = DestroyIcon(icon);
+                    if icon != HICON::default() {
+                        let _ = DestroyIcon(icon);
+                    }
                 }
             }
         }
@@ -329,16 +316,21 @@ impl Launcher {
         )?;
 
         // Search placeholder text (simple stand-in; real text via DirectWrite).
-        let _ = draw_text_placeholder(dc, search_x + SPACE_MD, search_y + search_h / 2.0, "Search apps…", theme.on_surface_variant, 18.0);
+        let _ = draw_text_placeholder(
+            dc,
+            search_x + SPACE_MD,
+            search_y + search_h / 2.0,
+            "Search apps…",
+            theme.on_surface_variant,
+            18.0,
+        );
 
         // 2. Grid of app cards.
         let cols = card_columns(self.screen_width);
         let rects = layout_cards(self, cols);
         for (i, entry) in self.entries.iter().enumerate() {
             let r = rects.get(i).copied().unwrap_or_default();
-            let hover = false; // placeholder; wired by input later.
-            let pressed = false;
-            draw_app_card(dc, r, entry, theme, hover, pressed)?;
+            draw_app_card(dc, r, entry, theme, false, false)?;
         }
 
         Ok(())
@@ -395,7 +387,7 @@ fn draw_app_card(
         theme.accent_container,
     )?;
 
-    // App icon: extract real icon via SHGetFileInfo; fallback to letter glyph.
+    // App icon: real icon via SHGetFileInfo; fallback to letter glyph.
     let icon_cx = icon_x + icon_size / 2.0;
     let icon_cy = icon_y + icon_size / 2.0;
     if let Some(icon) = entry.icon {
@@ -419,11 +411,11 @@ fn draw_app_card(
     Ok(())
 }
 
-/// Draw an HICON centered at (cx, cy) with the given diameter.
-fn draw_hicon(dc: &DrawContext, cx: f32, cy: f32, diameter: f32, hicon: HICON) -> Result<()> {
-    // Direct2D render target has no direct HICON blit; draw a colored
-    // rounded square stand-in keyed to the icon so each card looks distinct.
-    // Real icon compositing uses GDI+ / DrawIconEx into a D2D bitmap.
+/// Draw an HICON stand-in centered at (cx, cy) with the given diameter.
+/// Direct2D has no direct HICON blit; draw a colored rounded square keyed to
+/// the icon so each card looks distinct. Real icon compositing uses GDI+
+/// / DrawIconEx into a D2D bitmap.
+fn draw_hicon(dc: &DrawContext, cx: f32, cy: f32, diameter: f32, _hicon: HICON) -> Result<()> {
     let half = diameter / 2.0;
     let color = Color::new(0.6, 0.7, 1.0, 0.9);
     dc.fill_rounded_rect(cx - half, cy - half, diameter, diameter, half / 3.0, color)?;
@@ -439,7 +431,6 @@ fn draw_text_placeholder(
     color: Color,
     size: f32,
 ) -> Result<()> {
-    // Width guess: avg char width ~ 0.5 * size, centered horizontally over x..x+width.
     let width = text.len() as f32 * size * 0.55;
     let height = size;
     let left = x - width / 2.0;
