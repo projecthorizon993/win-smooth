@@ -9,12 +9,12 @@ use std::collections::HashMap;
 use crate::shell_ui::design_tokens::Color;
 use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::Graphics::Direct2D::Common::{
-    D2D1_COLOR_F, D2D_RECT_F, D2D_ROUNDED_RECT, D2D_SIZE_U,
+    D2D1_COLOR_F, D2D_RECT_F, D2D_SIZE_U,
 };
 use windows::Win32::Graphics::Direct2D::{
-    D2D1CreateFactory, D2D1_FACTORY_TYPE_SINGLE_THREADED, D2D1_HWND_RENDER_TARGET_PROPERTIES,
-    D2D1_PRESENT_OPTIONS_NONE, D2D1_RENDER_TARGET_PROPERTIES, ID2D1Factory, ID2D1RenderTarget,
-    ID2D1SolidColorBrush,
+    D2D1_ROUNDED_RECT, D2D1CreateFactory, D2D1_FACTORY_TYPE_SINGLE_THREADED,
+    D2D1_HWND_RENDER_TARGET_PROPERTIES, D2D1_PRESENT_OPTIONS_NONE, D2D1_RENDER_TARGET_PROPERTIES,
+    ID2D1Factory, ID2D1RenderTarget, ID2D1SolidColorBrush,
 };
 use windows::Win32::UI::HiDpi::GetDpiForWindow;
 use windows::Win32::UI::WindowsAndMessaging::GetClientRect;
@@ -116,7 +116,7 @@ impl DrawContext {
     ) -> Result<()> {
         let brush = self.brushes.get(&self.target, color)?;
         unsafe {
-            let rect = D2D_ROUNDED_RECT {
+            let rect = D2D1_ROUNDED_RECT {
                 rect: D2D_RECT_F {
                     left: x,
                     top: y,
@@ -126,7 +126,7 @@ impl DrawContext {
                 radiusX: radius,
                 radiusY: radius,
             };
-            self.target.FillRoundedRectangle(&rect, &brush)?;
+            self.target.FillRoundedRectangle(&rect, &brush);
         }
         Ok(())
     }
@@ -144,7 +144,7 @@ impl DrawContext {
     ) -> Result<()> {
         let brush = self.brushes.get(&self.target, color)?;
         unsafe {
-            let rect = D2D_ROUNDED_RECT {
+            let rect = D2D1_ROUNDED_RECT {
                 rect: D2D_RECT_F {
                     left: x,
                     top: y,
@@ -154,7 +154,7 @@ impl DrawContext {
                 radiusX: radius,
                 radiusY: radius,
             };
-            self.target.DrawRoundedRectangle(&rect, &brush, stroke_width, None)?;
+            self.target.DrawRoundedRectangle(&rect, &brush, stroke_width, None);
         }
         Ok(())
     }
@@ -171,7 +171,7 @@ impl DrawContext {
                     bottom: rect.bottom as f32,
                 },
                 &brush,
-            )?;
+            );
         }
         Ok(())
     }
