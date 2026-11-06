@@ -44,13 +44,18 @@ pub const APP_CARD_ICON_SIZE: f32 = 44.0;
 // ---------------------------------------------------------------------------
 
 /// sRGB color with alpha
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Hash)]
 pub struct Color {
     pub r: f32,
     pub g: f32,
     pub b: f32,
     pub a: f32,
 }
+
+// `f32` does not implement `Eq` (NaN != NaN), so `Eq` is implemented
+// manually. Color values are never NaN in practice, so bit-wise equality is
+// sound for HashMap key use.
+impl Eq for Color {}
 
 impl Color {
     pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {

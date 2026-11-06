@@ -12,7 +12,7 @@ use crate::shell_ui::design_tokens::*;
 use crate::shell_ui::theme::ThemeManager;
 use crate::shell_ui::hyper_os_theme::GlassPanel;
 use crate::shell_ui::render_context::DrawContext;
-use windows::Win32::Foundation::{HWND, RECT};
+use windows::Win32::Foundation::{COLORREF, HRGN, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Dwm::DWM_BLURBEHIND;
 use windows::Win32::UI::WindowsAndMessaging::{CS_HREDRAW, CS_VREDRAW, WS_POPUP, WS_VISIBLE, WM_DESTROY};
 use windows::core::w;
@@ -206,16 +206,22 @@ impl Taskbar {
     /// Hit-test a point against app slots; returns index under point.
     pub fn hit_app(&self, x: f32, y: f32) -> Option<usize> {
         self.app_slots.iter().position(|s| {
-            let r = s.rect?;
-            x >= r.left as f32 && x <= r.right as f32 && y >= r.top as f32 && y <= r.bottom as f32
+            if let Some(r) = s.rect {
+                x >= r.left as f32 && x <= r.right as f32 && y >= r.top as f32 && y <= r.bottom as f32
+            } else {
+                false
+            }
         })
     }
 
     /// Hit-test tray items.
     pub fn hit_tray(&self, x: f32, y: f32) -> Option<usize> {
         self.tray_items.iter().position(|t| {
-            let r = t.rect?;
-            x >= r.left as f32 && x <= r.right as f32 && y >= r.top as f32 && y <= r.bottom as f32
+            if let Some(r) = t.rect {
+                x >= r.left as f32 && x <= r.right as f32 && y >= r.top as f32 && y <= r.bottom as f32
+            } else {
+                false
+            }
         })
     }
 }
@@ -341,7 +347,7 @@ pub fn taskbar_blur_behind() -> DWM_BLURBEHIND {
     DWM_BLURBEHIND {
         dwFlags: 0x00000001, // DWM_BB_ENABLE
         fEnable: windows::Win32::Foundation::TRUE,
-        hRgnBlur: None,
+        hRgnBlur: HRGN::default(),
         fTransitionOnMaximized: windows::Win32::Foundation::FALSE,
     }
 }
@@ -365,7 +371,7 @@ impl Taskbar {
                     as u32,
                 style: CS_HREDRAW | CS_VREDRAW,
                 lpfnWndProc: Some(taskbar_wndproc),
-                hInstance: hinst,
+                hInstance: hinst.into(),
                 lpszClassName: class,
                 ..Default::default()
             };
@@ -385,14 +391,14 @@ impl Taskbar {
                 TASKBAR_HEIGHT as i32,
                 None,
                 None,
-                hinst,
+                Some(hinst.into()),
                 None,
             )?;
 
             // Layered, click-through: let input fall through to the desktop.
             windows::Win32::UI::WindowsAndMessaging::SetLayeredWindowAttributes(
                 hwnd,
-                0,
+                COLORREF(0),
                 255,
                 windows::Win32::UI::WindowsAndMessaging::LWA_ALPHA,
             );
@@ -509,7 +515,7 @@ fn draw_char(
     dc: &DrawContext,
     cx: f32,
     cy: f32,
-    ch: char,
+    _ch: char,
     color: Color,
     size: f32,
 ) -> windows::core::Result<()> {
@@ -522,14 +528,14 @@ fn draw_char(
 }
 
 /// Taskbar window procedure.
-extern "system" fn taskbar_wndproc(
+unsafe extern "system" fn taskbar_wndproc(
     hwnd: HWND,
     msg: u32,
-    wparam: usize,
-    lparam: isize,
-) -> isize {
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
     match msg {
-        windows::Win32::UI::WindowsAndMessaging::WM_DESTROY => 0,
+        windows::Win32::UI::WindowsAndMessaging::WM_DESTROY => LRESULT(0),
         _ => windows::Win32::UI::WindowsAndMessaging::DefWindowProcW(hwnd, msg, wparam, lparam),
     }
 }

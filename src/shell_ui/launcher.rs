@@ -4,7 +4,7 @@
 use crate::shell_ui::design_tokens::*;
 use crate::shell_ui::render_context::DrawContext;
 use crate::shell_ui::theme::ThemeManager;
-use windows::Win32::Foundation::{HWND, HINSTANCE};
+use windows::Win32::Foundation::{HWND, HINSTANCE, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Direct2D::Common::D2D1_RECT_F;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Shell::{
@@ -440,21 +440,21 @@ fn draw_text_placeholder(
 }
 
 /// Draw a single character centered at (cx, cy). Placeholder glyph renderer.
-fn draw_char(dc: &DrawContext, cx: f32, cy: f32, ch: char, color: Color, size: f32) -> Result<()> {
+fn draw_char(dc: &DrawContext, cx: f32, cy: f32, _ch: char, color: Color, size: f32) -> Result<()> {
     let radius = size / 3.0;
     dc.fill_rounded_rect(cx - radius, cy - radius, radius * 2.0, radius * 2.0, radius, color)?;
     Ok(())
 }
 
 /// Launcher window procedure (minimal: forwards to DefWindowProc).
-pub extern "system" fn launcher_wndproc(
+pub unsafe extern "system" fn launcher_wndproc(
     hwnd: HWND,
     msg: u32,
-    wparam: usize,
-    lparam: isize,
-) -> isize {
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
     match msg {
-        windows::Win32::UI::WindowsAndMessaging::WM_DESTROY => 0,
+        windows::Win32::UI::WindowsAndMessaging::WM_DESTROY => LRESULT(0),
         _ => windows::Win32::UI::WindowsAndMessaging::DefWindowProcW(hwnd, msg, wparam, lparam),
     }
 }
