@@ -1,4 +1,18 @@
-// Custom Direct2D UI: taskbar, dock, launcher
-pub fn init_direct2d() -> anyhow::Result<()> {
-    todo!("Direct2D device + swapchain")
-}
+//! Custom Direct2D shell UI — Hyper OS-inspired design system.
+//! Glassmorphism, rounded corners, vibrant accents, spring animations.
+
+pub mod design_tokens;
+pub mod theme;
+pub mod hyper_os_theme;
+
+pub mod render;
+pub mod window;
+pub mod render_context;
+
+pub mod taskbar;
+pub mod launcher;
+pub mod control_center;
+pub mod notifications;
+pub mod animation;
+
+pub mod components;
