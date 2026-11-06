@@ -288,7 +288,7 @@ pub fn card_columns(screen_width: f32) -> usize {
 
 impl Launcher {
     /// Paint one frame: search bar + grid of app cards.
-    pub fn paint(&self, dc: &DrawContext) -> Result<()> {
+    pub fn paint(&self, dc: &mut DrawContext) -> Result<()> {
         let theme = self.theme.current();
         let y = self.y();
 
@@ -339,7 +339,7 @@ impl Launcher {
 
 /// Draw one app card: rounded card bg, vibrant icon background, icon, label.
 fn draw_app_card(
-    dc: &DrawContext,
+    dc: &mut DrawContext,
     rect: D2D_RECT_F,
     entry: &AppEntry,
     theme: Theme,
@@ -415,7 +415,7 @@ fn draw_app_card(
 /// Direct2D has no direct HICON blit; draw a colored rounded square keyed to
 /// the icon so each card looks distinct. Real icon compositing uses GDI+
 /// / DrawIconEx into a D2D bitmap.
-fn draw_hicon(dc: &DrawContext, cx: f32, cy: f32, diameter: f32, _hicon: HICON) -> Result<()> {
+fn draw_hicon(dc: &mut DrawContext, cx: f32, cy: f32, diameter: f32, _hicon: HICON) -> Result<()> {
     let half = diameter / 2.0;
     let color = Color::new(0.6, 0.7, 1.0, 0.9);
     dc.fill_rounded_rect(cx - half, cy - half, diameter, diameter, half / 3.0, color)?;
@@ -424,7 +424,7 @@ fn draw_hicon(dc: &DrawContext, cx: f32, cy: f32, diameter: f32, _hicon: HICON) 
 
 /// Draw a centered single-line text placeholder (filled rect stand-in).
 fn draw_text_placeholder(
-    dc: &DrawContext,
+    dc: &mut DrawContext,
     x: f32,
     cy: f32,
     text: &str,
@@ -440,7 +440,7 @@ fn draw_text_placeholder(
 }
 
 /// Draw a single character centered at (cx, cy). Placeholder glyph renderer.
-fn draw_char(dc: &DrawContext, cx: f32, cy: f32, _ch: char, color: Color, size: f32) -> Result<()> {
+fn draw_char(dc: &mut DrawContext, cx: f32, cy: f32, _ch: char, color: Color, size: f32) -> Result<()> {
     let radius = size / 3.0;
     dc.fill_rounded_rect(cx - radius, cy - radius, radius * 2.0, radius * 2.0, radius, color)?;
     Ok(())

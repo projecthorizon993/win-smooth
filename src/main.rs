@@ -94,9 +94,9 @@ fn main() -> anyhow::Result<()> {
 
         // Paint all visible components each frame.
         dc.begin_frame();
-        taskbar.paint(&dc)?;
+        taskbar.paint(&mut dc)?;
         if launcher.is_open() {
-            launcher.paint(&dc)?;
+            launcher.paint(&mut dc)?;
         }
         // ControlCenter and NotificationCenter track visibility/animation state;
         // their Direct2D paint methods are not yet implemented in this change.

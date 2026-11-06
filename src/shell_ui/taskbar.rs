@@ -414,7 +414,7 @@ impl Taskbar {
     }
 
     /// Paint one frame: glass background, app icons, tray symbols.
-    pub fn paint(&self, dc: &DrawContext) -> windows::core::Result<()> {
+    pub fn paint(&self, dc: &mut DrawContext) -> windows::core::Result<()> {
         let theme = self.theme.current();
         let (apps, tray) = layout(self);
         let y = self.y();
@@ -477,7 +477,7 @@ impl Taskbar {
 
 /// App icon: rounded square with the app's first letter.
 fn draw_app_icon(
-    dc: &DrawContext,
+    dc: &mut DrawContext,
     cx: f32,
     cy: f32,
     size: f32,
@@ -495,7 +495,7 @@ fn draw_app_icon(
 
 /// Tray symbol for each tray kind.
 fn draw_tray_symbol(
-    dc: &DrawContext,
+    dc: &mut DrawContext,
     kind: &TrayKind,
     cx: f32,
     cy: f32,
@@ -513,7 +513,7 @@ fn draw_tray_symbol(
 
 /// Draw a single character centered at (cx, cy). Placeholder glyph renderer.
 fn draw_char(
-    dc: &DrawContext,
+    dc: &mut DrawContext,
     cx: f32,
     cy: f32,
     _ch: char,

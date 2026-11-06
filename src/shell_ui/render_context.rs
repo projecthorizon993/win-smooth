@@ -106,7 +106,7 @@ impl DrawContext {
 
     /// Fill a rounded rectangle with a color.
     pub fn fill_rounded_rect(
-        &self,
+        &mut self,
         x: f32,
         y: f32,
         width: f32,
@@ -133,7 +133,7 @@ impl DrawContext {
 
     /// Stroke a rounded rectangle outline.
     pub fn stroke_rounded_rect(
-        &self,
+        &mut self,
         x: f32,
         y: f32,
         width: f32,
@@ -160,7 +160,7 @@ impl DrawContext {
     }
 
     /// Fill a plain rectangle.
-    pub fn fill_rect(&self, rect: &RECT, color: Color) -> Result<()> {
+    pub fn fill_rect(&mut self, rect: &RECT, color: Color) -> Result<()> {
         let brush = self.brushes.get(&self.target, color)?;
         unsafe {
             self.target.FillRectangle(
