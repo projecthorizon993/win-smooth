@@ -4,7 +4,7 @@ mod dwm_tuning;
 mod window_manager;
 mod rendering;
 
-use crate::crash_handler::{init_crash_handler, install_seh_handler};
+use crate::crash_handler::init_crash_handler;
 use crate::ipc::{
     AppMessage, MSG_TRAY_ADD, MSG_TRAY_DELETE, MSG_TRAY_MODIFY,
     MSG_TASKBAR_BUTTON_OVERLAY, PipeServer,
