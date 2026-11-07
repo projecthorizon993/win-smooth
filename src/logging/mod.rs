@@ -169,7 +169,7 @@ impl Logger {
 
     /// Write a log entry.
     pub fn log(&self, level: LogLevel, module: &'static str, message: impl Into<String>) -> Result<()> {
-        if level as u8 < self.inner.lock().unwrap().min_level as u8 {
+        if (level as u8) < (self.inner.lock().unwrap().min_level as u8) {
             return Ok(());
         }
 
