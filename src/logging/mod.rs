@@ -139,7 +139,7 @@ impl Logger {
         Ok(BufWriter::new(file))
     }
 
-    fn maybe_rotate(&mut self, inner: &mut InnerLogger) -> Result<()> {
+    fn maybe_rotate(inner: &mut InnerLogger) -> Result<()> {
         if inner.current_size_bytes < inner.max_size_bytes {
             return Ok(());
         }
@@ -177,7 +177,7 @@ impl Logger {
         let formatted = entry.format();
 
         let mut inner = self.inner.lock().unwrap();
-        self.maybe_rotate(&mut inner)?;
+        Self::maybe_rotate(&mut inner)?;
 
         if let Some(ref mut writer) = inner.writer {
             writeln!(writer, "{}", formatted)?;
@@ -242,7 +242,8 @@ static GLOBAL_LOGGER: std::sync::OnceLock<Logger> = std::sync::OnceLock::new();
 pub fn init_global(log_path: Option<PathBuf>, min_level: LogLevel) -> Result<&'static Logger> {
     let path = log_path.unwrap_or_else(|| std::env::temp_dir().join("win-smooth.log"));
     let logger = Logger::new(path, 5_000_000, 3, min_level)?;
-    Ok(GLOBAL_LOGGER.set(logger).map_err(|_| anyhow::anyhow!("logger already initialized"))?)
+    GLOBAL_LOGGER.set(logger).map_err(|_| anyhow::anyhow!("logger already initialized"))?;
+    Ok(GLOBAL_LOGGER.get().expect("logger just set"))
 }
 
 /// Get the global logger instance.
