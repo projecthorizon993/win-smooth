@@ -31,7 +31,6 @@ fn main() -> anyhow::Result<()> {
     // 0. Initialize logging + crash handling FIRST (before anything else).
     let log_path = std::env::temp_dir().join("win-smooth.log");
     init_global(Some(log_path), LogLevel::Info)?;
-    let _seh_handler = install_seh_handler()?;
     init_crash_handler();
 
     if let Some(logger) = global() {
