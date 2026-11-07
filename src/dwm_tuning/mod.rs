@@ -134,7 +134,6 @@ fn set_dwm_priority() -> Result<()> {
                         .ok()
                         .context("SetPriorityClass on dwm.exe")?;
 
-                    CloseHandle(hproc).ok();
                     break true;
                 }
 
