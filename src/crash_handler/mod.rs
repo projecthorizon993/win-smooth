@@ -4,7 +4,6 @@
 //! crash doesn't take down the whole desktop.
 
 use crate::logging::{global, LogLevel};
-use anyhow::Result;
 use std::panic;
 use std::sync::Once;
 
@@ -13,12 +12,10 @@ static CRASH_HANDLER_INIT: Once = Once::new();
 
 /// Initialize crash handling: panic hook.
 /// Call once at shell startup.
-pub fn init_crash_handler() -> Result<()> {
+pub fn init_crash_handler() {
     CRASH_HANDLER_INIT.call_once(|| {
         panic::set_hook(Box::new(panic_hook));
     });
-
-    Ok(())
 }
 
 /// Panic hook callback - called when a Rust panic occurs.

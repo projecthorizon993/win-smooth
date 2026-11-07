@@ -30,7 +30,7 @@ fn main() -> anyhow::Result<()> {
     let log_path = std::env::temp_dir().join("win-smooth.log");
     init_global(Some(log_path), LogLevel::Info)?;
     let _seh_handler = install_seh_handler()?;
-    init_crash_handler()?;
+    init_crash_handler();
 
     if let Some(logger) = global() {
         logger.log(LogLevel::Info, "main", "win-smooth shell starting")?;
