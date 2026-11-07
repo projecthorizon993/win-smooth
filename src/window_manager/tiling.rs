@@ -12,9 +12,7 @@
 use crate::window_manager::floating::Floating;
 use crate::window_manager::rules::Rules;
 use windows::Win32::Foundation::{HWND, LPARAM, RECT};
-use windows::Win32::Graphics::Gdi::{
-    GetMonitorInfoW, HMONITOR, HDC, MONITORINFO, MONITORINFOF_PRIMARY,
-};
+use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, HMONITOR, HDC, MONITORINFO};
 use windows::Win32::UI::WindowsAndMessaging::{
     BeginDeferWindowPos, DeferWindowPos, EndDeferWindowPos, EnumWindows, GetClassNameW,
     GetWindowLongW, GetWindowTextW, GetWindowRect, GWL_STYLE, IsIconic, IsWindowVisible,
@@ -151,7 +149,7 @@ unsafe extern "system" fn monitor_callback(
     };
     let got = unsafe { GetMonitorInfoW(hmonitor, &mut info) }.as_bool();
     let work = if got { info.rcWork } else { monitor_rect };
-    let is_primary = got && (info.dwFlags & MONITORINFOF_PRIMARY) != 0;
+    let is_primary = got && (info.dwFlags & 1u32) != 0;
 
     monitors.push(Monitor {
         rect: monitor_rect,
