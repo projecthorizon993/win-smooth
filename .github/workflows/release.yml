@@ -1,0 +1,111 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable, MSVC)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Setup MSVC environment (x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-msvc-release-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build Rust release binary
+        run: cargo build --release
+
+      - name: Build hook DLL (C/C++, MSVC cl.exe /LD)
+        shell: pwsh
+        run: |
+          cd hook_dll
+          .\build.bat
+
+      - name: Verify artifacts exist
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "target/release/win-smooth.exe")) {
+            Write-Error "win-smooth.exe not found"
+            exit 1
+          }
+          if (-not (Test-Path "hook_dll/x64/Release/explorer_inject.dll")) {
+            Write-Error "explorer_inject.dll not found"
+            exit 1
+          }
+          Get-ChildItem "target/release/win-smooth.exe"
+          Get-ChildItem "hook_dll/x64/Release/explorer_inject.dll"
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref_name }}
+          body: |
+            # win-smooth ${{ github.ref_name }}
+
+            ## Changes
+            - Rust shell: composited desktop shell with Direct2D/Direct3D rendering
+            - C/C++ hook DLL: injected into explorer.exe for taskbar/tray integration
+            - DWM smoothness tuning: blur disabled, MPO disabled, process priority boost
+            - Hyper OS UI: glassmorphism taskbar, app launcher, control center, notifications
+            - Resource efficient: no WebView2/Electron, ~150MB idle RAM target
+            - Smoothness: flip-model present, spring animations, 60fps target
+
+            ## Install
+            1. Download `win-smooth.exe` and `explorer_inject.dll`
+            2. Run `scripts/install.ps1` as Administrator
+            3. Reboot
+            4. Run `tests/smoke_test.ps1` to verify
+
+            ## Rollback
+            Run `scripts/uninstall.ps1` as Administrator to restore explorer.exe
+          draft: false
+          prerelease: false
+
+      - name: Upload win-smooth.exe release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: target/release/win-smooth.exe
+          asset_name: win-smooth.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload explorer_inject.dll release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: hook_dll/x64/Release/explorer_inject.dll
+          asset_name: explorer_inject.dll
+          asset_content_type: application/octet-stream
+
+      - name: Publish release notes
+        run: |
+          echo "Release ${{ github.ref_name }} published with win-smooth.exe and explorer_inject.dll"
