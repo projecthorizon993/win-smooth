@@ -8,6 +8,8 @@ on:
 jobs:
   build-release:
     runs-on: windows-latest
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
     steps:
