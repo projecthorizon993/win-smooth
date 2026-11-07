@@ -208,8 +208,8 @@ fn grid_layout(m: &Monitor, wins: &[&ManagedWindow]) -> Vec<Placement> {
     let cell_h = (m.work.bottom - m.work.top) / rows;
 
     for (i, w) in wins.iter().enumerate() {
-        let col = i % cols;
-        let row = i / cols;
+        let col = (i as i32) % cols;
+        let row = (i as i32) / cols;
         let rect = RECT {
             left: m.work.left + col * cell_w,
             top: m.work.top + row * cell_h,
@@ -246,7 +246,7 @@ pub fn apply_layout(placements: &[Placement]) -> Result<()> {
         return Ok(());
     }
 
-    let mut hdwp = unsafe { BeginDeferWindowPos(placements.len() as i32) }?;
+    let hdwp = unsafe { BeginDeferWindowPos(placements.len() as i32) }?;
     let mut last_err = Ok(());
 
     for p in placements {
