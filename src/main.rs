@@ -3,6 +3,8 @@ mod shell_ui;
 mod dwm_tuning;
 mod window_manager;
 mod rendering;
+mod crash_handler;
+mod logging;
 
 use crate::crash_handler::init_crash_handler;
 use crate::ipc::{
