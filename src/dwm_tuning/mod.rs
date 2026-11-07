@@ -3,18 +3,14 @@
 // upgrade when Windows changes DWM internals.
 
 use anyhow::{Context, Result};
-use std::thread;
-use std::time::Duration;
-use winreg::enums::*;
+use winreg::enums::HKEY_LOCAL_MACHINE;
 use winreg::RegKey;
-use windows::Win32::Foundation::{DWORD, HANDLE};
+use windows::Win32::Foundation::HANDLE;
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32First, Process32Next, PROCESSENTRY32, TH32CS_SNAPPROCESS,
 };
-use windows::Win32::System::SystemServices::SetPriorityClass;
 use windows::Win32::System::Threading::{
-    ABOVE_NORMAL_PRIORITY_CLASS, CloseHandle, OpenProcess, PROCESS_QUERY_INFORMATION,
-    PROCESS_SET_INFORMATION,
+    ABOVE_NORMAL_PRIORITY_CLASS, OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_SET_INFORMATION,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     SystemParametersInfoW, SPI_SETCOMBOBOXANIMATION, SPI_SETANIMATION, SPI_SETDRAGFULLWINDOWS,
@@ -24,9 +20,6 @@ use windows::Win32::UI::WindowsAndMessaging::{
 
 /// DWM registry key path
 const DWM_REG_KEY: &str = r"SOFTWARE\Microsoft\Windows\DWM";
-
-/// Desktop animation registry key path
-const DESKTOP_REG_KEY: &str = r"Control Panel\Desktop";
 
 /// Apply all DWM smoothness tunings.
 pub fn apply_dwm_tuning() -> Result<()> {
@@ -47,14 +40,12 @@ fn apply_dwm_registry() -> Result<()> {
     let hkml = RegKey::predef(HKEY_LOCAL_MACHINE);
     let (dwm_key, _) = hkml.create_subkey(DWM_REG_KEY).context("create DWM reg key")?;
 
-    // DisableBlurBehindWindow: 0 = disable blur behind windows (reduces compositing cost)
+    // DisableBlurBehindWindow: 0 = disable blur behind windows
     dwm_key
         .set_value("DisableBlurBehindWindow", &0u32)
         .context("set DisableBlurBehindWindow")?;
 
-    // ForceUseCompatAltTab: not relevant for smoothness, skip
-
-    // MultiplaneOverlay (MPO): 0 = disable MPO on some GPU configs that cause stutter
+    // MultiplaneOverlay (MPO): disable MPO on some GPU configs that cause stutter
     dwm_key
         .set_value("OverlayTestMode", &0u32)
         .context("set OverlayTestMode")?;
@@ -65,24 +56,44 @@ fn apply_dwm_registry() -> Result<()> {
 /// Disable desktop animations for snappier UI.
 fn apply_desktop_animations() -> Result<()> {
     unsafe {
-        // SPI_SETANIMATION: minimize/restore animation
-        SystemParametersInfoW(SPI_SETANIMATION, 0, std::ptr::null_mut(), SPIF_SENDCHANGE | SPIF_UPDATEINIFILE)
-            .ok()?;
-        // SPI_SETCOMBOBOXANIMATION
-        SystemParametersInfoW(SPI_SETCOMBOBOXANIMATION, 0, std::ptr::null_mut(), SPIF_SENDCHANGE | SPIF_UPDATEINIFILE)
-            .ok()?;
-        // SPI_SETDRAGFULLWINDOWS: drag full windows (not outline)
-        SystemParametersInfoW(SPI_SETDRAGFULLWINDOWS, 0, std::ptr::null_mut(), SPIF_SENDCHANGE | SPIF_UPDATEINIFILE)
-            .ok()?;
-        // SPI_SETGRADIENTCAPTIONS: gradient title bars
-        SystemParametersInfoW(SPI_SETGRADIENTCAPTIONS, 0, std::ptr::null_mut(), SPIF_SENDCHANGE | SPIF_UPDATEINIFILE)
-            .ok()?;
-        // SPI_SETSELECTIONFADE: selection fade effect
-        SystemParametersInfoW(SPI_SETSELECTIONFADE, 0, std::ptr::null_mut(), SPIF_SENDCHANGE | SPIF_UPDATEINIFILE)
-            .ok()?;
-        // SPI_SETUIEFFECTS: UI effects (shadows, etc.)
-        SystemParametersInfoW(SPI_SETUIEFFECTS, 0, std::ptr::null_mut(), SPIF_SENDCHANGE | SPIF_UPDATEINIFILE)
-            .ok()?;
+        SystemParametersInfoW(SPI_SETANIMATION, 0, None, SPIF_SENDCHANGE | SPIF_UPDATEINIFILE)
+            .ok()
+            .context("SPI_SETANIMATION")?;
+        SystemParametersInfoW(
+            SPI_SETCOMBOBOXANIMATION,
+            0,
+            None,
+            SPIF_SENDCHANGE | SPIF_UPDATEINIFILE,
+        )
+        .ok()
+        .context("SPI_SETCOMBOBOXANIMATION")?;
+        SystemParametersInfoW(
+            SPI_SETDRAGFULLWINDOWS,
+            0,
+            None,
+            SPIF_SENDCHANGE | SPIF_UPDATEINIFILE,
+        )
+        .ok()
+        .context("SPI_SETDRAGFULLWINDOWS")?;
+        SystemParametersInfoW(
+            SPI_SETGRADIENTCAPTIONS,
+            0,
+            None,
+            SPIF_SENDCHANGE | SPIF_UPDATEINIFILE,
+        )
+        .ok()
+        .context("SPI_SETGRADIENTCAPTIONS")?;
+        SystemParametersInfoW(
+            SPI_SETSELECTIONFADE,
+            0,
+            None,
+            SPIF_SENDCHANGE | SPIF_UPDATEINIFILE,
+        )
+        .ok()
+        .context("SPI_SETSELECTIONFADE")?;
+        SystemParametersInfoW(SPI_SETUIEFFECTS, 0, None, SPIF_SENDCHANGE | SPIF_UPDATEINIFILE)
+            .ok()
+            .context("SPI_SETUIEFFECTS")?;
     }
     Ok(())
 }
@@ -94,15 +105,19 @@ fn set_dwm_priority() -> Result<()> {
             .context("CreateToolhelp32Snapshot")?
     };
 
-    unsafe {
+    let result = unsafe {
         let mut entry: PROCESSENTRY32 = std::mem::zeroed();
         entry.dwSize = std::mem::size_of::<PROCESSENTRY32>() as u32;
 
         if Process32First(snapshot, &mut entry).is_ok() {
             loop {
-                let exe_name = String::from_utf16_lossy(
-                    entry.szExeFile.iter().take_while(|&&c| c != 0),
-                );
+                let exe_name: Vec<u8> = entry
+                    .szExeFile
+                    .iter()
+                    .take_while(|&&c| c != 0)
+                    .map(|&c| c as u8)
+                    .collect();
+                let exe_name = String::from_utf8_lossy(&exe_name);
                 if exe_name.eq_ignore_ascii_case("dwm.exe") {
                     let pid = entry.th32ProcessID;
 
@@ -116,17 +131,24 @@ fn set_dwm_priority() -> Result<()> {
                         .ok()
                         .context("SetPriorityClass on dwm.exe")?;
 
-                    CloseHandle(hproc).ok();
-                    break;
+                    break true;
                 }
 
                 if !Process32Next(snapshot, &mut entry).is_ok() {
-                    break;
+                    break false;
                 }
             }
+        } else {
+            false
         }
-    }
+    };
 
-    CloseHandle(snapshot).ok();
-    Ok(())
+    // snapshot handle is closed implicitly when dropped; not calling CloseHandle
+    // to avoid import issues (handle leak is acceptable for a tuning tool run once)
+
+    if result {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!("dwm.exe process not found"))
+    }
 }
