@@ -1,6 +1,7 @@
 mod ipc;
 mod shell_ui;
 mod dwm_tuning;
+mod window_manager;
 
 use crate::ipc::{
     AppMessage, MSG_TRAY_ADD, MSG_TRAY_DELETE, MSG_TRAY_MODIFY,
@@ -27,7 +28,15 @@ fn main() -> anyhow::Result<()> {
     // 2. Named pipe server (IPC from hook DLL).
     let pipe = ipc::start_pipe_server()?;
 
-    // 3. Create and show the glass taskbar overlay window.
+    // 3. Window manager (tiling + floating) runs on a background thread,
+    //    re-tiling top-level windows every 2s while working with DWM.
+    std::thread::spawn(move || {
+        window_manager::WindowManager::new()
+            .expect("window manager init")
+            .run(Duration::from_secs(2));
+    });
+
+    // 4. Create and show the glass taskbar overlay window.
     let mut taskbar = Taskbar::new();
     taskbar.init_window()?;
     taskbar.show();
