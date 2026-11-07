@@ -4,10 +4,12 @@ mod dwm_tuning;
 mod window_manager;
 mod rendering;
 
+use crate::crash_handler::{init_crash_handler, install_seh_handler};
 use crate::ipc::{
     AppMessage, MSG_TRAY_ADD, MSG_TRAY_DELETE, MSG_TRAY_MODIFY,
     MSG_TASKBAR_BUTTON_OVERLAY, PipeServer,
 };
+use crate::logging::{global, init_global, LogLevel};
 use crate::rendering::{PipelineConfig, PresentMode, RenderBackend, Renderer};
 use crate::shell_ui::animation::init_defaults;
 use crate::shell_ui::control_center::ControlCenter;
@@ -24,6 +26,16 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 
 fn main() -> anyhow::Result<()> {
+    // 0. Initialize logging + crash handling FIRST (before anything else).
+    let log_path = std::env::temp_dir().join("win-smooth.log");
+    init_global(Some(log_path), LogLevel::Info)?;
+    let _seh_handler = install_seh_handler()?;
+    init_crash_handler()?;
+
+    if let Some(logger) = global() {
+        logger.log(LogLevel::Info, "main", "win-smooth shell starting")?;
+    }
+
     // 1. DWM tuning applied once at startup.
     dwm_tuning::apply_dwm_tuning()?;
 
