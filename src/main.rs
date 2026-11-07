@@ -2,11 +2,13 @@ mod ipc;
 mod shell_ui;
 mod dwm_tuning;
 mod window_manager;
+mod rendering;
 
 use crate::ipc::{
     AppMessage, MSG_TRAY_ADD, MSG_TRAY_DELETE, MSG_TRAY_MODIFY,
     MSG_TASKBAR_BUTTON_OVERLAY, PipeServer,
 };
+use crate::rendering::{PipelineConfig, PresentMode, RenderBackend, Renderer};
 use crate::shell_ui::animation::init_defaults;
 use crate::shell_ui::control_center::ControlCenter;
 use crate::shell_ui::launcher::Launcher;
@@ -47,6 +49,21 @@ fn main() -> anyhow::Result<()> {
 
     // 4. Direct2D render target for the taskbar window.
     let mut dc = DrawContext::create_for_window(hwnd)?;
+
+    // 5. Multi-backend rendering pipeline (Direct2D/D3D11/D3D12).
+    //    Defaults to Direct3D11 with mailbox present mode for smoothness.
+    let mut renderer = Renderer::new(
+        RenderBackend::Direct3D11,
+        PipelineConfig {
+            backend: RenderBackend::Direct3D11,
+            target_fps: 60,
+            enable_vsync: true,
+            triple_buffering: true,
+            present_mode: PresentMode::Mailbox,
+            flush_gpu_after_present: false,
+        },
+    )?;
+    renderer.init(hwnd)?;
 
     // 5. Other UI components.
     let mut launcher = Launcher::new()?;
@@ -110,6 +127,9 @@ fn main() -> anyhow::Result<()> {
         // ControlCenter and NotificationCenter track visibility/animation state;
         // their Direct2D paint methods are not yet implemented in this change.
         dc.end_frame()?;
+
+        // Present frame via the multi-backend rendering pipeline.
+        let _frame_ms = renderer.present_frame()?;
 
         // Cap at ~60fps to avoid busy-waiting when idle.
         let elapsed = last.elapsed();
