@@ -5,12 +5,12 @@
 use anyhow::{Context, Result};
 use winreg::enums::HKEY_LOCAL_MACHINE;
 use winreg::RegKey;
-use windows::Win32::Foundation::HANDLE;
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32First, Process32Next, PROCESSENTRY32, TH32CS_SNAPPROCESS,
 };
 use windows::Win32::System::Threading::{
     ABOVE_NORMAL_PRIORITY_CLASS, OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_SET_INFORMATION,
+    SetPriorityClass,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     SystemParametersInfoW, SPI_SETCOMBOBOXANIMATION, SPI_SETANIMATION, SPI_SETDRAGFULLWINDOWS,
@@ -20,6 +20,9 @@ use windows::Win32::UI::WindowsAndMessaging::{
 
 /// DWM registry key path
 const DWM_REG_KEY: &str = r"SOFTWARE\Microsoft\Windows\DWM";
+
+/// Desktop animation registry key path
+const DESKTOP_REG_KEY: &str = r"Control Panel\Desktop";
 
 /// Apply all DWM smoothness tunings.
 pub fn apply_dwm_tuning() -> Result<()> {
@@ -40,12 +43,12 @@ fn apply_dwm_registry() -> Result<()> {
     let hkml = RegKey::predef(HKEY_LOCAL_MACHINE);
     let (dwm_key, _) = hkml.create_subkey(DWM_REG_KEY).context("create DWM reg key")?;
 
-    // DisableBlurBehindWindow: 0 = disable blur behind windows
+    // DisableBlurBehindWindow: 0 = disable blur behind windows (reduces compositing cost)
     dwm_key
         .set_value("DisableBlurBehindWindow", &0u32)
         .context("set DisableBlurBehindWindow")?;
 
-    // MultiplaneOverlay (MPO): disable MPO on some GPU configs that cause stutter
+    // MultiplaneOverlay (MPO): 0 = disable MPO on some GPU configs that cause stutter
     dwm_key
         .set_value("OverlayTestMode", &0u32)
         .context("set OverlayTestMode")?;
@@ -131,6 +134,7 @@ fn set_dwm_priority() -> Result<()> {
                         .ok()
                         .context("SetPriorityClass on dwm.exe")?;
 
+                    CloseHandle(hproc).ok();
                     break true;
                 }
 
@@ -142,9 +146,6 @@ fn set_dwm_priority() -> Result<()> {
             false
         }
     };
-
-    // snapshot handle is closed implicitly when dropped; not calling CloseHandle
-    // to avoid import issues (handle leak is acceptable for a tuning tool run once)
 
     if result {
         Ok(())
